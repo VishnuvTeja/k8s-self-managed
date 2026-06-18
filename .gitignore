@@ -1,0 +1,13 @@
+# Local Terraform state — do not commit secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+
+# Ansible
+*.retry
+
+# OS
+.DS_Store
+Thumbs.db

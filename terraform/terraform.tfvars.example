@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in your values:
+# cp terraform.tfvars.example terraform.tfvars
+
+aws_region   = "eu-central-1"
+project_name = "k8s-frankfurt"
+
+# Paste contents of your ~/.ssh/id_rsa.pub
+ssh_public_key = "ssh-rsa AAAA... your-key-here"
+
+# Restrict SSH to your IP in production, e.g. "203.0.113.10/32"
+allowed_ssh_cidr = "0.0.0.0/0"
+
+instance_type      = "t3.medium"
+volume_size_gb     = 30
+kubernetes_version = "1.29"

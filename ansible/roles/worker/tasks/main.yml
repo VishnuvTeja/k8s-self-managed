@@ -1,0 +1,14 @@
+---
+- name: Fail if join command is missing from master
+  fail:
+    msg: "kubeadm join command not found on master. Run the master role first."
+  when: hostvars[groups['masters'][0]]['kubeadm_join_command'] is not defined
+
+- name: Join worker to cluster
+  command: "{{ hostvars[groups['masters'][0]]['kubeadm_join_command'] }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+
+- name: Wait for node to register
+  pause:
+    seconds: 30
