@@ -24,13 +24,9 @@ output "ssh_user" {
 }
 
 output "ansible_inventory" {
-  description = "Ansible inventory snippet — copy into ansible/inventory/hosts.yml"
+  description = "Ansible inventory (host IPs only — vars in ansible/group_vars/all.yml)"
   value       = <<-EOT
     all:
-      vars:
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: ~/.ssh/id_rsa
-        kubernetes_version: "${var.kubernetes_version}"
       children:
         k8s_cluster:
           children:

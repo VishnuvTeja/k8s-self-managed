@@ -1,0 +1,5 @@
+bucket         = "YOUR-UNIQUE-terraform-state-bucket-name"
+key            = "k8s-frankfurt/terraform.tfstate"
+region         = "eu-central-1"
+dynamodb_table = "k8s-frankfurt-terraform-locks"
+encrypt        = true

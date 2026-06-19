@@ -4,9 +4,14 @@
 *.tfstate.*
 .terraform.lock.hcl
 terraform.tfvars
+terraform/backend.hcl
+terraform/bootstrap/terraform.tfvars
 
 # Ansible
 *.retry
+
+# Jenkins
+tfplan
 
 # OS
 .DS_Store
