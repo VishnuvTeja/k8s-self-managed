@@ -26,8 +26,8 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'eu-central-1'
-        TF_DIR             = '/home/ec2-user/k8s-self-managed/terraform'
-        ANSIBLE_DIR        = '/home/ec2-user/k8s-self-managed/ansible'
+        TF_DIR             = 'terraform'
+        ANSIBLE_DIR        = 'ansible'
         // Jenkins credential IDs — update to match your Jenkins setup
         SSH_CREDS_ID       = 'k8s-ssh-key'
     }
