@@ -112,10 +112,9 @@ Or use a Jenkins agent in the same AWS VPC as the K8s nodes.
 
 | Credential ID | Type | Value |
 |---------------|------|-------|
-| `aws-creds` | AWS Credentials | Access key + secret (or use IAM instance profile on Jenkins EC2) |
 | `k8s-ssh-key` | SSH Username with private key | User: `ubuntu`, Key: your private key matching Terraform `ssh_public_key` |
 
-Update credential IDs in `Jenkinsfile` if you use different names.
+**AWS credentials:** Use an IAM instance profile attached to the Jenkins EC2 instance. Terraform and AWS CLI will automatically use these credentials via the instance metadata service. No need to create credentials in Jenkins.
 
 ### 3. Create pipeline job
 

@@ -29,7 +29,6 @@ pipeline {
         TF_DIR             = 'terraform'
         ANSIBLE_DIR        = 'ansible'
         // Jenkins credential IDs — update to match your Jenkins setup
-        AWS_CREDS_ID       = 'aws-creds'
         SSH_CREDS_ID       = 'k8s-ssh-key'
     }
 
@@ -52,22 +51,15 @@ pipeline {
                 expression { !params.SKIP_TERRAFORM }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    dir("${TF_DIR}") {
-                        sh '''
-                            if [ -f backend.hcl ]; then
-                              terraform init -backend-config=backend.hcl
-                            else
-                              echo "WARNING: backend.hcl not found — using local state"
-                              terraform init
-                            fi
-                        '''
-                    }
+                dir("${TF_DIR}") {
+                    sh '''
+                        if [ -f backend.hcl ]; then
+                          terraform init -backend-config=backend.hcl
+                        else
+                          echo "WARNING: backend.hcl not found — using local state"
+                          terraform init
+                        fi
+                    '''
                 }
             }
         }
@@ -80,15 +72,8 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    dir("${TF_DIR}") {
-                        sh 'terraform plan -out=tfplan'
-                    }
+                dir("${TF_DIR}") {
+                    sh 'terraform plan -out=tfplan'
                 }
             }
         }
@@ -114,21 +99,14 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    dir("${TF_DIR}") {
-                        sh """
-                            if [ "${params.AUTO_APPROVE}" = "true" ]; then
-                              terraform apply -auto-approve tfplan
-                            else
-                              terraform apply tfplan
-                            fi
-                        """
-                    }
+                dir("${TF_DIR}") {
+                    sh """
+                        if [ "${params.AUTO_APPROVE}" = "true" ]; then
+                          terraform apply -auto-approve tfplan
+                        else
+                          terraform apply tfplan
+                        fi
+                    """
                 }
             }
         }
@@ -142,15 +120,8 @@ pipeline {
             }
             steps {
                 input message: 'DESTROY all K8s infrastructure?', ok: 'Destroy'
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    dir("${TF_DIR}") {
-                        sh 'terraform destroy -auto-approve'
-                    }
+                dir("${TF_DIR}") {
+                    sh 'terraform destroy -auto-approve'
                 }
             }
         }
@@ -164,14 +135,7 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    sh 'bash scripts/generate-inventory.sh'
-                }
+                sh 'bash scripts/generate-inventory.sh'
             }
         }
 
