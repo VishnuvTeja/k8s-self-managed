@@ -1,5 +1,5 @@
 pipeline {
-    agent {
+    agent any {
         docker {
             image 'vishnuvteja/k8s-jenkins-tools:latest'
             args '-u root'
