@@ -51,15 +51,16 @@ pipeline {
                 expression { !params.SKIP_TERRAFORM }
             }
             steps {
-                dir("${TF_DIR}") {
-                    sh '''
-                        if [ -f backend.hcl ]; then
-                          terraform init -backend-config=backend.hcl
-                        else
-                          echo "WARNING: backend.hcl not found — using local state"
-                          terraform init
-                        fi
-                    '''
+                    dir("${TF_DIR}") {
+                        sh '''
+                            if [ -f backend.hcl ]; then
+                              terraform init -backend-config=backend.hcl
+                            else
+                              echo "WARNING: backend.hcl not found — using local state"
+                              terraform init
+                            fi
+                        '''
+                    }
                 }
             }
         }
