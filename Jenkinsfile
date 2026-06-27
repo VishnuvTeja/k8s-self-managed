@@ -52,12 +52,6 @@ pipeline {
                 expression { !params.SKIP_TERRAFORM }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
                     dir("${TF_DIR}") {
                         sh '''
                             if [ -f backend.hcl ]; then
