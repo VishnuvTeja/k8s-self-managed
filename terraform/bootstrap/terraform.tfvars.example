@@ -1,0 +1,4 @@
+aws_region          = "eu-central-1"
+project_name        = "k8s-frankfurt"
+state_bucket_name   = "your-unique-k8s-frankfurt-tfstate-12345"
+dynamodb_table_name = "k8s-frankfurt-terraform-locks"
