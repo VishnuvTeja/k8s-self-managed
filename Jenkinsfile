@@ -28,8 +28,13 @@ pipeline {
         AWS_DEFAULT_REGION = 'eu-central-1'
         TF_DIR = 'terraform'
         ANSIBLE_DIR = 'ansible'
+<<<<<<< HEAD
         SSH_CREDS_ID = 'k8s-ssh-key'
         PATH = "${env.HOME}/.local/bin:${env.HOME}/bin:${env.PATH}"
+=======
+        IMAGE_NAME = 'k8s-jenkins-toolbox'
+        SSH_CREDS_ID = 'k8s-ssh-key'
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
     }
 
     options {
@@ -45,6 +50,7 @@ pipeline {
             }
         }
 
+<<<<<<< HEAD
         stage('Prepare Tools') {
             steps {
                 sh '''
@@ -79,6 +85,12 @@ pipeline {
                     ansible --version | head -n 1
                     aws --version
                     kubectl version --client --short
+=======
+        stage('Build Tool Image') {
+            steps {
+                sh '''
+                    docker build -t "${IMAGE_NAME}" .
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                 '''
             }
         }
@@ -89,6 +101,7 @@ pipeline {
             }
             steps {
                 sh '''
+<<<<<<< HEAD
                     set -e
                     export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                     cd "$WORKSPACE/${TF_DIR}"
@@ -98,6 +111,14 @@ pipeline {
                       echo "WARNING: backend.hcl not found — using local state"
                       terraform init
                     fi
+=======
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "if [ -f backend.hcl ]; then terraform init -backend-config=backend.hcl; else echo 'WARNING: backend.hcl not found — using local state'; terraform init; fi"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                 '''
             }
         }
@@ -111,10 +132,19 @@ pipeline {
             }
             steps {
                 sh '''
+<<<<<<< HEAD
                     set -e
                     export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                     cd "$WORKSPACE/${TF_DIR}"
                     terraform plan -out=tfplan
+=======
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "terraform plan -out=tfplan"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                 '''
             }
         }
@@ -140,6 +170,7 @@ pipeline {
                 }
             }
             steps {
+<<<<<<< HEAD
                 sh '''
                     set -e
                     export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
@@ -150,6 +181,16 @@ pipeline {
                       terraform apply tfplan
                     fi
                 '''
+=======
+                sh """
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "if [ '${params.AUTO_APPROVE}' = 'true' ]; then terraform apply -auto-approve tfplan; else terraform apply tfplan; fi"
+                """
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
             }
         }
 
@@ -163,10 +204,19 @@ pipeline {
             steps {
                 input message: 'DESTROY all K8s infrastructure?', ok: 'Destroy'
                 sh '''
+<<<<<<< HEAD
                     set -e
                     export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                     cd "$WORKSPACE/${TF_DIR}"
                     terraform destroy -auto-approve
+=======
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "terraform destroy -auto-approve"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                 '''
             }
         }
@@ -181,10 +231,19 @@ pipeline {
             }
             steps {
                 sh '''
+<<<<<<< HEAD
                     set -e
                     export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                     cd "$WORKSPACE"
                     bash scripts/generate-inventory.sh
+=======
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "bash scripts/generate-inventory.sh"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                 '''
             }
         }
@@ -203,12 +262,24 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
+<<<<<<< HEAD
                         set -e
                         export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                         chmod 600 "$SSH_KEY_FILE"
                         cd "$WORKSPACE"
                         export SSH_KEY="$SSH_KEY_FILE"
                         bash scripts/wait-for-ssh.sh
+=======
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "bash scripts/wait-for-ssh.sh"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                     '''
                 }
             }
@@ -228,11 +299,23 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
+<<<<<<< HEAD
                         set -e
                         export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                         chmod 600 "$SSH_KEY_FILE"
                         cd "$WORKSPACE/${ANSIBLE_DIR}"
                         ansible all -m ping --private-key="$SSH_KEY_FILE"
+=======
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace/${ANSIBLE_DIR} \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "ansible all -m ping --private-key='${SSH_KEY_FILE}'"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                     '''
                 }
             }
@@ -252,11 +335,23 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
+<<<<<<< HEAD
                         set -e
                         export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                         chmod 600 "$SSH_KEY_FILE"
                         cd "$WORKSPACE/${ANSIBLE_DIR}"
                         ansible-playbook playbook.yml --private-key="$SSH_KEY_FILE"
+=======
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace/${ANSIBLE_DIR} \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "ansible-playbook playbook.yml --private-key='${SSH_KEY_FILE}'"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                     '''
                 }
             }
@@ -276,12 +371,24 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
+<<<<<<< HEAD
                         set -e
                         export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
                         chmod 600 "$SSH_KEY_FILE"
                         cd "$WORKSPACE"
                         MASTER_IP=$(cd terraform && terraform output -raw master_public_ip)
                         ssh -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} "kubectl get nodes -o wide"
+=======
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "MASTER_IP=$(cd terraform && terraform output -raw master_public_ip); ssh -i '${SSH_KEY_FILE}' -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} 'kubectl get nodes -o wide'"
+>>>>>>> ea6b200a47b200c26bc7ff399b2f29d61ff04283
                     '''
                 }
             }
