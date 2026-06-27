@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'vishnuvteja/k8s-jenkins-tools:latest'
+            args '-u root'
+        }
+    }
 
     parameters {
         booleanParam(
@@ -45,46 +50,10 @@ pipeline {
             }
         }
 
-        stage('Prepare Tools') {
+        stage('Verify Tooling') {
             steps {
                 sh '''
                     set -e
-                    mkdir -p "$HOME/bin"
-                    export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
-
-                    if ! command -v terraform >/dev/null 2>&1; then
-                        curl -fsSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
-                        unzip -o /tmp/terraform.zip -d "$HOME/bin"
-                        rm -f /tmp/terraform.zip
-                    fi
-
-                    if ! command -v ansible-playbook >/dev/null 2>&1; then
-                        if command -v apt-get >/dev/null 2>&1; then
-                            apt-get update
-                            apt-get install -y python3 python3-pip python3-venv
-                            python3 -m pip install --user ansible boto3
-                        elif command -v yum >/dev/null 2>&1; then
-                            yum install -y python3 python3-pip
-                            python3 -m pip install --user ansible boto3
-                        else
-                            echo "No supported package manager found for installing Python/Ansible"
-                            exit 1
-                        fi
-                    fi
-
-                    if ! command -v aws >/dev/null 2>&1; then
-                        curl -fsSLo /tmp/awscliv2.zip https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
-                        unzip -q /tmp/awscliv2.zip -d /tmp
-                        /tmp/aws/install -i "$HOME/aws-cli" -b "$HOME/bin"
-                        rm -rf /tmp/aws /tmp/awscliv2.zip
-                    fi
-
-                    if ! command -v kubectl >/dev/null 2>&1; then
-                        curl -fsSLo "$HOME/bin/kubectl" https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
-                        chmod +x "$HOME/bin/kubectl"
-                    fi
-
-                    chmod +x "$HOME/bin/terraform" "$HOME/bin/kubectl" 2>/dev/null || true
                     terraform version
                     ansible --version | head -n 1
                     aws --version
