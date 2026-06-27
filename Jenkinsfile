@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        dockerfile {
-            filename 'Dockerfile'
-        }
-    }
+    agent any
 
     parameters {
         booleanParam(
@@ -30,10 +26,10 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'eu-central-1'
-        TF_DIR             = 'terraform'
-        ANSIBLE_DIR        = 'ansible'
-        // Jenkins credential IDs — update to match your Jenkins setup
-        SSH_CREDS_ID       = 'k8s-ssh-key'
+        TF_DIR = 'terraform'
+        ANSIBLE_DIR = 'ansible'
+        IMAGE_NAME = 'k8s-jenkins-toolbox'
+        SSH_CREDS_ID = 'k8s-ssh-key'
     }
 
     options {
@@ -43,10 +39,17 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Build Tool Image') {
+            steps {
+                sh '''
+                    docker build -t "${IMAGE_NAME}" .
+                '''
             }
         }
 
@@ -55,16 +58,14 @@ pipeline {
                 expression { !params.SKIP_TERRAFORM }
             }
             steps {
-                dir("${TF_DIR}") {
-                    sh '''
-                        if [ -f backend.hcl ]; then
-                          terraform init -backend-config=backend.hcl
-                        else
-                          echo "WARNING: backend.hcl not found — using local state"
-                          terraform init
-                        fi
-                    '''
-                }
+                sh '''
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "if [ -f backend.hcl ]; then terraform init -backend-config=backend.hcl; else echo 'WARNING: backend.hcl not found — using local state'; terraform init; fi"
+                '''
             }
         }
 
@@ -76,9 +77,14 @@ pipeline {
                 }
             }
             steps {
-                dir("${TF_DIR}") {
-                    sh 'terraform plan -out=tfplan'
-                }
+                sh '''
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "terraform plan -out=tfplan"
+                '''
             }
         }
 
@@ -103,15 +109,14 @@ pipeline {
                 }
             }
             steps {
-                dir("${TF_DIR}") {
-                    sh """
-                        if [ "${params.AUTO_APPROVE}" = "true" ]; then
-                          terraform apply -auto-approve tfplan
-                        else
-                          terraform apply tfplan
-                        fi
-                    """
-                }
+                sh """
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "if [ '${params.AUTO_APPROVE}' = 'true' ]; then terraform apply -auto-approve tfplan; else terraform apply tfplan; fi"
+                """
             }
         }
 
@@ -124,9 +129,14 @@ pipeline {
             }
             steps {
                 input message: 'DESTROY all K8s infrastructure?', ok: 'Destroy'
-                dir("${TF_DIR}") {
-                    sh 'terraform destroy -auto-approve'
-                }
+                sh '''
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace/${TF_DIR} \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "terraform destroy -auto-approve"
+                '''
             }
         }
 
@@ -139,7 +149,14 @@ pipeline {
                 }
             }
             steps {
-                sh 'bash scripts/generate-inventory.sh'
+                sh '''
+                    docker run --rm \
+                      -v "$PWD:/workspace" \
+                      -w /workspace \
+                      -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                      "${IMAGE_NAME}" \
+                      sh -c "bash scripts/generate-inventory.sh"
+                '''
             }
         }
 
@@ -157,8 +174,15 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
-                        export SSH_KEY="${SSH_KEY_FILE}"
-                        bash scripts/wait-for-ssh.sh
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "bash scripts/wait-for-ssh.sh"
                     '''
                 }
             }
@@ -177,9 +201,17 @@ pipeline {
                     keyFileVariable: 'SSH_KEY_FILE',
                     usernameVariable: 'SSH_USER'
                 )]) {
-                    dir("${ANSIBLE_DIR}") {
-                        sh 'ansible all -m ping --private-key="${SSH_KEY_FILE}"'
-                    }
+                    sh '''
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace/${ANSIBLE_DIR} \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "ansible all -m ping --private-key='${SSH_KEY_FILE}'"
+                    '''
                 }
             }
         }
@@ -197,9 +229,17 @@ pipeline {
                     keyFileVariable: 'SSH_KEY_FILE',
                     usernameVariable: 'SSH_USER'
                 )]) {
-                    dir("${ANSIBLE_DIR}") {
-                        sh 'ansible-playbook playbook.yml --private-key="${SSH_KEY_FILE}"'
-                    }
+                    sh '''
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace/${ANSIBLE_DIR} \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "ansible-playbook playbook.yml --private-key='${SSH_KEY_FILE}'"
+                    '''
                 }
             }
         }
@@ -218,9 +258,15 @@ pipeline {
                     usernameVariable: 'SSH_USER'
                 )]) {
                     sh '''
-                        MASTER_IP=$(cd terraform && terraform output -raw master_public_ip)
-                        ssh -i "${SSH_KEY_FILE}" -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} \
-                          "kubectl get nodes -o wide"
+                        chmod 600 "${SSH_KEY_FILE}"
+                        docker run --rm \
+                          -v "$PWD:/workspace" \
+                          -w /workspace \
+                          -v "${SSH_KEY_FILE}:${SSH_KEY_FILE}:ro" \
+                          -e SSH_KEY_FILE="${SSH_KEY_FILE}" \
+                          -e SSH_USER="${SSH_USER}" \
+                          "${IMAGE_NAME}" \
+                          sh -c "MASTER_IP=$(cd terraform && terraform output -raw master_public_ip); ssh -i '${SSH_KEY_FILE}' -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} 'kubectl get nodes -o wide'"
                     '''
                 }
             }
